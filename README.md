@@ -66,20 +66,46 @@ The application follows Laravel conventions with a separation of responsibilitie
 
 ## Installation & Setup
 
-This repository contains the application code intended to be integrated into an existing, fresh Laravel 12 installation. It does not include Laravel framework dependencies or generated application files.
+This repository contains application-specific code intended to be integrated into a fresh Laravel 12 installation. It does not include Laravel framework dependencies or generated application directories.
 
-### 1. Create a Laravel 12 Project
+### 1. Create a Fresh Laravel 12 Project
 
 ```bash
 composer create-project laravel/laravel url-shortener "^12.0"
 cd url-shortener
 ```
 
-Copy the application files from this repository into the Laravel project, preserving their directory structure.
+### 2. Copy Application Files
 
-Keep the Laravel-generated files and directories, including `vendor`, `bootstrap`, `storage`, and the default configuration files.
+Copy the files and directories from this repository into the newly created Laravel project, preserving their original directory structure.
 
-### 2. Configure Environment Variables
+**Important:** Keep the following directories and files from the fresh Laravel installation:
+
+- `vendor/` – Contains Composer dependencies.
+- `storage/` – Contains application logs, cache, sessions, and other runtime files.
+- `bootstrap/cache/` – Contains framework-generated cache files.
+- `.env` – Contains your environment-specific configuration.
+- Other default Laravel configuration and bootstrap files.
+
+Do not replace these directories with missing or incomplete versions from this repository.
+
+If the `bootstrap/cache/` directory does not exist, create it manually:
+
+```bash
+mkdir -p bootstrap/cache
+```
+
+Make sure the required Laravel directories exist:
+
+```bash
+mkdir -p storage/framework/cache/data
+mkdir -p storage/framework/sessions
+mkdir -p storage/framework/views
+mkdir -p storage/logs
+mkdir -p bootstrap/cache
+```
+
+### 3. Configure Environment Variables
 
 Update your `.env` file with your database and SMTP configuration.
 
@@ -113,7 +139,7 @@ Replace the placeholder values with your actual SMTP credentials.
 
 For Gmail, use an App Password instead of your regular Google account password.
 
-### 3. Configure Super Admin Credentials
+### 4. Configure Super Admin Credentials
 
 Super Admin credentials are configurable through the `super_admin` configuration array in `config/app.php`.
 
@@ -125,19 +151,11 @@ Super Admin credentials are configurable through the `super_admin` configuration
 ],
 ```
 
-You can customize these credentials using the corresponding environment variables:
-
-```dotenv
-SUPER_ADMIN_EMAIL=superadmin@email.com
-SUPER_ADMIN_PASSWORD=ChangeThisPassword
-SUPER_ADMIN_NAME="Shorten URL - Super Admin"
-```
-
 The Super Admin account is created through `SuperAdminSeeder`.
 
 **Security note:** Change the default credentials before deploying the application to any shared or production environment.
 
-### 4. Run Database Migrations & Seeder
+### 5. Run Database Migrations & Seeder
 
 Ensure that the default Laravel `users` migration is available, as the application extends the users table with `company_id` and `role` columns.
 
@@ -148,7 +166,7 @@ php artisan migrate
 php artisan db:seed --class=SuperAdminSeeder
 ```
 
-### 5. Start the Development Server
+### 6. Start the Development Server
 
 ```bash
 php artisan serve
