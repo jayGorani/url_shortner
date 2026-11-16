@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use App\Mail\InvitationMail;
 use App\Models\Company;
 use App\Models\Invitation;
@@ -17,26 +18,44 @@ class InvitationService
     {
         $isSuperAdmin = $inviter->isSuperAdmin();
 
-        abort_unless($isSuperAdmin || $inviter->isAdmin(), 403);
+        if (! $isSuperAdmin && ! $inviter->isAdmin()) {
+            throw new AuthorizationException(
+                'You are not authorized to send invitations.'
+            );
+        }
 
         $role = $data['role'];
         $email = Str::lower($data['email']);
 
         if ($isSuperAdmin) {
-            abort_unless(
-                $role === 'admin' && ! empty($data['company_name']),
-                403
-            );
+
+            if ($role !== 'admin' || empty($data['company_name'])) {
+                throw ValidationException::withMessages([
+                    'role' => 'SuperAdmin can only invite an admin with a company name.',
+                ]);
+            }
 
             $companyId = null;
             $companyName = $data['company_name'];
+
         } else {
-            abort_unless(in_array($role, ['admin', 'member'], true), 403);
+
+            if (! in_array($role, ['admin', 'member'], true)) {
+                throw new AuthorizationException(
+                    'You are not authorized to invite users with this role.'
+                );
+            }
 
             $companyId = $inviter->company_id;
             $companyName = null;
 
-            abort_unless($companyId, 403);
+            if (! $companyId) {
+
+                throw new AuthorizationException(
+                    'Your account is not associated with a company.'
+                );
+
+            }
         }
 
         $pendingInvitations = Invitation::query()
@@ -66,16 +85,18 @@ class InvitationService
 
         $plainToken = Str::random(64);
 
-        $invitation = Invitation::create([
-            'company_id' => $companyId,
-            'company_name' => $companyName,
-            'name' => $data['name'],
-            'invited_by' => $inviter->id,
-            'email' => $email,
-            'role' => $role,
-            'token' => hash('sha256', $plainToken),
-            'expires_at' => now()->addDays(7),
-        ]);
+        $invitation = Invitation::create(
+            [
+                'company_id'   => $companyId,
+                'company_name' => $companyName,
+                'name'         => $data['name'],
+                'invited_by'   => $inviter->id,
+                'email'        => $email,
+                'role'         => $role,
+                'token'        => hash('sha256', $plainToken),
+                'expires_at'   => now()->addDays(7),
+            ]
+        );
 
         Mail::to($invitation->email)->send(
             new InvitationMail($invitation, $plainToken)
@@ -113,8 +134,8 @@ class InvitationService
 
             if ($invitation->role === 'admin' && $companyId === null) {
                 $company = Company::create([
-                    'name' => $invitation->company_name,
-                    'slug' => $this->makeUniqueCompanySlug($invitation->company_name),
+                    'name'   => $invitation->company_name,
+                    'slug'   => $this->makeUniqueCompanySlug($invitation->company_name),
                     'status' => 'active',
                 ]);
 
@@ -127,19 +148,23 @@ class InvitationService
                 ]);
             }
 
-            $user = User::create([
-                'company_id' => $companyId,
-                'name' => $invitation->name,
-                'email' => $invitation->email,
-                'password' => $password,
-                'role' => $invitation->role,
-            ]);
+            $user = User::create(
+                [
+                    'company_id' => $companyId,
+                    'name'       => $invitation->name,
+                    'email'      => $invitation->email,
+                    'password'   => $password,
+                    'role'       => $invitation->role,
+                ]
+            );
 
-            $invitation->update([
-                'company_id' => $companyId,
-                'accepted_at' => now(),
-                'token' => null,
-            ]);
+            $invitation->update(
+                [
+                    'company_id'  => $companyId,
+                    'accepted_at' => now(),
+                    'token'       => null,
+                ]
+            );
 
             return $user;
         });
@@ -161,7 +186,7 @@ class InvitationService
         $plainToken = Str::random(64);
 
         $invitation->update([
-            'token' => hash('sha256', $plainToken),
+            'token'      => hash('sha256', $plainToken),
             'expires_at' => now()->addDays(7),
         ]);
 
