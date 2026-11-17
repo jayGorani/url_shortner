@@ -22,42 +22,29 @@ class ShortUrlService
         }
 
         // Retry only when a generated short code causes a duplicate key.
+        $shortCode = $this->getUniqueCode();
 
-        for ($attempt = 0; $attempt < 5; $attempt++) {
-
-            $shortCode = Str::random(8);
-
-            if (ShortUrl::where('short_code', $shortCode)->exists()) {
-                continue;
-            }
-
-            try {
-
-                return ShortUrl::create(
-                    [
-                        'user_id'      => $user->id,
-                        'company_id'   => $user->company_id,
-                        'original_url' => $originalUrl,
-                        'short_code'   => $shortCode,
-                        'click_count'  => 0,
-                    ]
-                );
-
-            } catch (QueryException $exception) {
-
-                // A concurrent request may have inserted the same code.
-                if (ShortUrl::where('short_code', $shortCode)->exists()) {
-                    continue;
-                }
-
-                throw $exception;
-
-            }
-        }
-
-        throw new RuntimeException(
-            'A short code could not be generated. Please try again.'
+        return ShortUrl::create(
+            [
+                'user_id'      => $user->id,
+                'company_id'   => $user->company_id,
+                'original_url' => $originalUrl,
+                'short_code'   => $shortCode,
+                'click_count'  => 0,
+            ]
         );
+
+
+    }
+
+
+    public function getUniqueCode(): string {
+
+        do {
+            $shortCode = Str::random(8);
+        } while (ShortUrl::where('short_code', $shortCode)->exists());
+
+        return $shortCode;
     }
 
 }

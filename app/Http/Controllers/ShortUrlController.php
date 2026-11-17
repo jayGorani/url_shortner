@@ -21,6 +21,7 @@ class ShortUrlController extends Controller
             // Super admin sees everything.right now no need for any kind of code in this
         } elseif ($user->isAdmin()) {
             $query->where('company_id', $user->company_id);
+            // $query->whereRelation('user','role','admin');  // uncomment when you want only for same company admin members
         } else {
             $query->where('user_id', $user->id);
         }
